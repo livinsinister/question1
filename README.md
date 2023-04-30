@@ -4,4 +4,4 @@ In this code, we have:
 3. The 'on_read' parameter is set to 'None' to indicate that the characteristic is read-only. This means that clients can read the current value of the characteristic, but they cannot write to it. The 'on_notify' parameter is set to the 'battery_level_handler' function, which is called when a client subscribes to notifications of the battery level characteristic.
 4. The server advertises as "PC Battery" every 200ms and updates the battery level characteristic with the current battery percentage every second.
 In order to test the BLE Peripheral using nRF connect app:
-1. Using Bleak ≥ 0.13.0 
+1. Using Bleak ≥ 0.13.0 supporting our OS, obtain the custom UUIDs for the custom service and characteristic
