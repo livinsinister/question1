@@ -2,7 +2,7 @@ from uuid import UUID
 from bleak import BleakServer, BleakCharacteristic
 
 # Define the UUIDs for your custom service and characteristic
-SERVICE_UUID = UUID("0000180f-0000-1000-8000-00805f9b34fb")
+SERVICE_UUID = UUID("0000180F-0000-1000-8000-00805F9B34FB")
 CHARACTERISTIC_UUID = UUID("00002a19-0000-1000-8000-00805f9b34fb")
 
 # Define the function that will be called when the characteristic is read
