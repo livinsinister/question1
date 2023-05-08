@@ -1,39 +1,59 @@
 import asyncio
 import psutil
-import uuid
-import bleak
+from uuid import UUID
 
-BATTERY_SERVICE_UUID = uuid.UUID('0000180F-0000-1000-8000-00805F9B34FB')
-BATTERY_LEVEL_CHAR_UUID = uuid.UUID('00002A19-0000-1000-8000-00805F9B34FC')
+from bleak import BleakServer, BleakCharacteristic, BleakAdvertisingData
 
-async def battery_level_handler(sender, data):
-    # Do something with the received data
-    battery_level = int.from_bytes(data, byteorder='little')
-    print("Received battery level:", battery_level)
+# define UUIDs for the service and characteristic
+SERVICE_UUID = UUID("00000001-0000-0000-0000-000000000001")
+CHARACTERISTIC_UUID = UUID("00000002-0000-0000-0000-000000000002")
 
-async def run():
-    async with bleak.BleakServer("PC Battery", loop=loop, port=0) as server:
-        # Define the battery service
-        battery_service = bleak.BleakGATTService(BATTERY_SERVICE_UUID)
-        
-        # Define the custom battery level characteristic
-        battery_level_char = bleak.BleakGATTCharacteristic(BATTERY_LEVEL_CHAR_UUID, flags=0x0B, description="Battery Level",
-                                                           value=psutil.sensors_battery().percent.to_bytes(1, byteorder='little'),
-                                                           on_read=None, on_notify=battery_level_handler)
 
-        # Add the battery level characteristic to the battery service
-        battery_service.add_characteristic(battery_level_char)
-        
-        # Add the battery service to the server
-        await server.add_service(battery_service)
+# define the battery level characteristic
+class BatteryLevelCharacteristic(BleakCharacteristic):
+    def __init__(self):
+        super().__init__(
+            uuid=CHARACTERISTIC_UUID,
+            flags=("read", "notify"),
+            description="Battery Level",
+            characteristic_value_type="uint8")
 
-        # Start advertising as "PC Battery" every 200ms
-        await server.start_advertising(200)
+    @staticmethod
+    async def read_value(_):
+        return psutil.sensors_battery().percent
 
-        while True:
-            # Update the battery level characteristic with the current battery percentage
-            battery_level_char.set_value(psutil.sensors_battery().percent.to_bytes(1, byteorder='little'))
-            await asyncio.sleep(1.0)
 
-loop = asyncio.get_event_loop()
-loop.run_until_complete(run())
+# define the PC Battery Service
+class PCBatteryService:
+    def __init__(self):
+        self.server = BleakServer()
+        self.server.add_service(
+            SERVICE_UUID, primary=True,
+            characteristics=[BatteryLevelCharacteristic()])
+
+    def start(self):
+        loop = asyncio.get_event_loop()
+        loop.run_until_complete(self.server.start())
+
+    def stop(self):
+        loop = asyncio.get_event_loop()
+        loop.run_until_complete(self.server.stop())
+
+
+# create the BLE peripheral
+battery_service = PCBatteryService()
+advertising_data = BleakAdvertisingData(service_uuids=[str(SERVICE_UUID)], local_name="PC Battery")
+
+
+async def advertise():
+    while True:
+        await battery_service.server.send_advertisement_data(advertising_data)
+        await asyncio.sleep(0.2)
+
+
+async def start():
+    battery_service.start()
+    await advertise()
+
+event_loop = asyncio.get_event_loop()
+event_loop.run_until_complete(start())
